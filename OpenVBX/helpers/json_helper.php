@@ -30,7 +30,7 @@
 /* Loading the helper automatically requires and instantiates the Services_JSON class */
 if ( ! class_exists('Services_JSON'))
 {
-	require_once('JSON.php');		
+	require_once(APPPATH.'helpers/JSON.php');		
 }
 $json = new Services_JSON();
 
