@@ -134,6 +134,13 @@
 					<label for="site-from-email" class="field-label">From Email
 						<input id="site-from-email" type="text" name="site[from_email]" value="<?php echo @$from_email['value'] ?>" class="medium" />
 					</label>
+					<label for="site-protect-twiml" class="field-label">Do you want to protect TwiML Requests to be only allowed from Twilio?
+						<select id="site-protect-twiml" class="medium" name="site[protect_twiml]">
+							<?php foreach(array(0 => "No", 1 => "Yes" ) as $value => $option): ?>
+							<option value="<?php echo $value ?>" <?php echo ($value == @$protect_twiml['value'])? 'selected="selected"' : ''?>><?php echo $option ?></option>
+							<?php endforeach; ?>
+						</select>
+					</label>
 				</fieldset>
 				<button class="submit-button" type="submit"><span>Update</span></button>
 			</form>

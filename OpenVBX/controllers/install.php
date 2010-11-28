@@ -59,6 +59,7 @@ class Install extends Controller {
 		$this->openvbx = array();
 		$this->openvbx_settings['twilio_sid'] = trim($this->input->post('twilio_sid'));
 		$this->openvbx_settings['twilio_token'] = trim($this->input->post('twilio_token'));
+		$this->openvbx_settings['protect_twiml'] = '1';
 		$this->openvbx['salt'] = md5(rand(10000, 99999));
 		$this->openvbx_settings['from_email'] = trim($this->input->post('from_email') == ""?
 													 ''

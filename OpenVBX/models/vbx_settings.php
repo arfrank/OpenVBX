@@ -29,6 +29,7 @@ class VBX_Settings extends Model
 	public $setting_options = array('twilio_sid',
 									'twilio_token',
 									'twilio_endpoint',
+									'protect_twiml',
 									'from_email',
 									'recording_host',
 									'theme');
