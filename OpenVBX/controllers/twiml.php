@@ -53,15 +53,39 @@ class Twiml extends MY_Controller {
 	{
 		redirect('');
 	}
+	
+	function twiml_request_auth()
+	{
+		if($this->settings->get('protect_twiml', VBX_PARENT_TENANT))
+		{
+			$signature = isset($_SERVER['HTTP_X_TWILIO_SIGNATURE']) ? $_SERVER['HTTP_X_TWILIO_SIGNATURE'] : '';
+			if ($this->request_method != 'POST' && $this->request_method != 'GET') {
+				return False;
+			}
+			$post_data = array();
+			//
+			$url = rtrim(base_url(),'/').$_SERVER['REQUEST_URI'];
+			if ($this->request_method == 'POST') {
+				//Grab all posted variables with the request
+				$post_data = $_POST;
+			}
+			return $this->request->validateRequest($signature, $url, $post_data);
+		}
+		else
+		{
+			return True;
+		}
+	}
+	
 
 	function start_sms($flow_id)
 	{
 		log_message("info", "Calling SMS Flow $flow_id");
 		$body = $this->input->get_post('Body');
 		$this->flow_type = 'sms';
-		
+	
 		$this->session->set_userdata('sms-body', $body);
-
+	
 		$flow_id = $this->set_flow_id($flow_id);
 		$flow = $this->get_flow();
 		$flow_data = array();
@@ -69,7 +93,6 @@ class Twiml extends MY_Controller {
 		{
 			$flow_data = get_object_vars(json_decode($flow->sms_data));
 		}
-		
 		$instance = isset($flow_data['start'])? $flow_data['start'] : null;
 		if(is_object($instance))
 		{
@@ -80,14 +103,13 @@ class Twiml extends MY_Controller {
 			$this->response->addSay('Error 4 0 4 - Flow not found.');
 			$this->response->Respond();
 		}
-
 	}
 
 	function start_voice($flow_id)
 	{
 		log_message("info", "Calling Voice Flow $flow_id");
 		$this->flow_type = 'voice';
-		
+	
 		$flow_id = $this->set_flow_id($flow_id);
 		$flow = $this->get_flow();
 		$flow_data = array();
@@ -95,9 +117,8 @@ class Twiml extends MY_Controller {
 		{
 			$flow_data = get_object_vars(json_decode($flow->data));
 		}
-		
+	
 		$instance = isset($flow_data['start'])? $flow_data['start'] : null;
-		
 		if(is_object($instance))
 		{
 			$this->applet($flow_id, 'start');
@@ -148,99 +169,105 @@ class Twiml extends MY_Controller {
 		$flow = $this->get_flow();
 		$instance = null;
 		$applet = null;
-		
-		try
+		if($this->twiml_request_auth())
 		{
-			switch($type)
+			try
 			{
-				case 'sms':
-					if(isset($_REQUEST['Body']) && $inst_id == 'start')
-					{
-						$_COOKIE['sms-body'] = $_REQUEST['Body'];
-						$sms = $_REQUEST['Body'];
-
-						// Expires after three hours
-						set_cookie('sms-body', $sms, 60*60*3);
-					}
-					else
-					{
-						$sms = isset($_COOKIE['sms-body'])? $_COOKIE['sms-body'] : null;
-						set_cookie('sms-body', null, time()-3600);
-					}
-					$sms_data = $flow->sms_data;
-					if(!empty($sms_data))
-					{
-						$flow_data = get_object_vars(json_decode($sms_data));
-						$instance = isset($flow_data[$inst_id])? $flow_data[$inst_id] : null;
-					}
-					
-					if(!is_null($instance))
-					{
-						$plugin_dir_name = '';
-						$applet_dir_name = '';
-						list($plugin_dir_name, $applet_dir_name) = explode('---', $instance->type);
-						
-						$applet = Applet::get($plugin_dir_name,
-											  $applet_dir_name,
-											  null,
-											  $instance);
-						$applet->flow_type = $type;
-						$applet->instance_id = $inst_id;
-						$applet->sms = $sms;
-						if($sms)
+				switch($type)
+				{
+					case 'sms':
+						if(isset($_REQUEST['Body']) && $inst_id == 'start')
 						{
-							$_POST['Body'] = $_GET['Body'] = $_REQUEST['Body'] = $sms;
+							$_COOKIE['sms-body'] = $_REQUEST['Body'];
+							$sms = $_REQUEST['Body'];
+
+							// Expires after three hours
+							set_cookie('sms-body', $sms, 60*60*3);
 						}
-						$this->session->unset_userdata('sms-body');
+						else
+						{
+							$sms = isset($_COOKIE['sms-body'])? $_COOKIE['sms-body'] : null;
+							set_cookie('sms-body', null, time()-3600);
+						}
+						$sms_data = $flow->sms_data;
+						if(!empty($sms_data))
+						{
+							$flow_data = get_object_vars(json_decode($sms_data));
+							$instance = isset($flow_data[$inst_id])? $flow_data[$inst_id] : null;
+						}
+					
+						if(!is_null($instance))
+						{
+							$plugin_dir_name = '';
+							$applet_dir_name = '';
+							list($plugin_dir_name, $applet_dir_name) = explode('---', $instance->type);
 						
-						$applet->currentURI = site_url("twiml/applet/sms/$flow_id/$inst_id");
+							$applet = Applet::get($plugin_dir_name,
+												  $applet_dir_name,
+												  null,
+												  $instance);
+							$applet->flow_type = $type;
+							$applet->instance_id = $inst_id;
+							$applet->sms = $sms;
+							if($sms)
+							{
+								$_POST['Body'] = $_GET['Body'] = $_REQUEST['Body'] = $sms;
+							}
+							$this->session->unset_userdata('sms-body');
+						
+							$applet->currentURI = site_url("twiml/applet/sms/$flow_id/$inst_id");
 
-						$baseURI = site_url("twiml/applet/sms/$flow_id/");
-						$this->applet_headers($applet, $plugin_dir_name);
-						echo $applet->twiml($flow, $baseURI, $instance);
-					}
-					break;
-				case 'voice':
-					$voice_data = $flow->data;
-					if(!empty($voice_data))
-					{
-						$flow_data = get_object_vars(json_decode($voice_data));
-						$instance = isset($flow_data[$inst_id])? $flow_data[$inst_id] : null;
-					}
+							$baseURI = site_url("twiml/applet/sms/$flow_id/");
+							$this->applet_headers($applet, $plugin_dir_name);
+							echo $applet->twiml($flow, $baseURI, $instance);
+						}
+						break;
+					case 'voice':
+						$voice_data = $flow->data;
+						if(!empty($voice_data))
+						{
+							$flow_data = get_object_vars(json_decode($voice_data));
+							$instance = isset($flow_data[$inst_id])? $flow_data[$inst_id] : null;
+						}
 
-					if(!is_null($instance))
-					{
-						$plugin_dir_name = '';
-						$applet_dir_name = '';
-						list($plugin_dir_name, $applet_dir_name) = explode('---', $instance->type);
+						if(!is_null($instance))
+						{
+							$plugin_dir_name = '';
+							$applet_dir_name = '';
+							list($plugin_dir_name, $applet_dir_name) = explode('---', $instance->type);
 						
-						$applet = Applet::get($plugin_dir_name,
-											  $applet_dir_name,
-											  null,
-											  $instance);
-						$applet->flow_type = $type;
-						$applet->instance_id = $inst_id;
-						$applet->currentURI = site_url("twiml/applet/voice/$flow_id/$inst_id");
-						$baseURI = site_url("twiml/applet/voice/$flow_id/");
-						$this->applet_headers($applet, $plugin_dir_name);
+							$applet = Applet::get($plugin_dir_name,
+												  $applet_dir_name,
+												  null,
+												  $instance);
+							$applet->flow_type = $type;
+							$applet->instance_id = $inst_id;
+							$applet->currentURI = site_url("twiml/applet/voice/$flow_id/$inst_id");
+							$baseURI = site_url("twiml/applet/voice/$flow_id/");
+							$this->applet_headers($applet, $plugin_dir_name);
 						
-						echo $applet->twiml($flow, $baseURI, $instance);
-					}
-					break;
-			}
+							echo $applet->twiml($flow, $baseURI, $instance);
+						}
+						break;
+				}
 			
-			if(!is_object($applet))
-			{
-				$this->response->addSay("Unknown applet instance in flow $flow_id.");
-				$this->response->Respond();
-			}
+				if(!is_object($applet))
+				{
+					$this->response->addSay("Unknown applet instance in flow $flow_id.");
+					$this->response->Respond();
+				}
 
+			}
+			catch(Exception $ex)
+			{
+				$this->response->addSay('Error: ' + $ex->getMessage());
+			}
 		}
-		catch(Exception $ex)
+		else
 		{
-			$this->response->addSay('Error: ' + $ex->getMessage());
+			$this->response->addSay('Unauthorized Access. If you believe that you should have access, please contact an administrator.');
+			$this->response->Respond();
 		}
-		
 	}
 	
 	function whisper()
