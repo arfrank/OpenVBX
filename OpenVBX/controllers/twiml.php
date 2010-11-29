@@ -56,7 +56,7 @@ class Twiml extends MY_Controller {
 	
 	function twiml_request_auth()
 	{
-		if($this->settings->get('validate_twiml_requests', VBX_PARENT_TENANT))
+		if( $this->settings->get('validate_twiml_requests', VBX_PARENT_TENANT ) && ! ( $this->session->userdata('is_admin') ) )
 		{
 			$signature = isset($_SERVER['HTTP_X_TWILIO_SIGNATURE']) ? $_SERVER['HTTP_X_TWILIO_SIGNATURE'] : '';
 			if ($this->request_method != 'POST' && $this->request_method != 'GET') {
@@ -261,8 +261,10 @@ class Twiml extends MY_Controller {
 		}
 		else
 		{
-			$this->response->addSay('Unauthorized Access. If you believe that you should have access, please contact an administrator.');
-			$this->response->Respond();
+			//Unauthorized response, but not the right way to indicate how to make an authorized request
+			header("WWW-Authenticate: X_Twilio_Signature realm=\"OpenVBX\"");
+			header("HTTP/1.0 401 Unauthorized");
+			exit;
 		}
 	}
 	
