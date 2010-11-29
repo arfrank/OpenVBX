@@ -1,3 +1,3 @@
-INSERT INTO settings SET name='validate_twiml_requests', value='1', tenant_id=1;
+INSERT INTO settings (tenant_id,name,value) VALUES (1,'validate_twiml_requests','');
 
 UPDATE `settings` SET `value` = 43 WHERE `name` = 'schema-version';
