@@ -56,7 +56,7 @@ class Twiml extends MY_Controller {
 	
 	function twiml_request_auth()
 	{
-		if( $this->settings->get('validate_twiml_requests', VBX_PARENT_TENANT ) && ! ( $this->session->userdata('is_admin') ) )
+		if( intval($this->settings->get('validate_twiml_requests', VBX_PARENT_TENANT )) && ! ( $this->session->userdata('is_admin') == True ) )
 		{
 			$signature = isset($_SERVER['HTTP_X_TWILIO_SIGNATURE']) ? $_SERVER['HTTP_X_TWILIO_SIGNATURE'] : '';
 			if ($this->request_method != 'POST' && $this->request_method != 'GET') {
