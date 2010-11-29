@@ -62,13 +62,9 @@ class Twiml extends MY_Controller {
 			if ($this->request_method != 'POST' && $this->request_method != 'GET') {
 				return False;
 			}
-			$post_data = array();
-			//
 			$url = rtrim(base_url(),'/').$_SERVER['REQUEST_URI'];
-			if ($this->request_method == 'POST') {
-				//Grab all posted variables with the request
-				$post_data = $_POST;
-			}
+			//Grab all posted variables with the request
+			$post_data = $_POST;
 			return $this->request->validateRequest($signature, $url, $post_data);
 		}
 		else
